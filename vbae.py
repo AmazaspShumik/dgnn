@@ -37,6 +37,8 @@ class BaseVAE(object):
         # activation function
         if activation == None:
             self.activation = tf.nn.relu
+        else:
+            self.activation = activation
             
         self.learning_rate = learning_rate            
         self.batch_size = batch_size
@@ -76,11 +78,11 @@ class BaseVAE(object):
         
         # decoder hidden layer 1
         dw_h1, db_h1 = create_layer(self.d_lat,self.dd_h1)
-        dh1          = tf.nn.elu(tf.matmul(z,dw_h1) + db_h1)
+        dh1          = self.activation(tf.matmul(z,dw_h1) + db_h1)
         
         # decoder hidden layer 2
         dw_h2, db_h2 = create_layer(self.dd_h1,self.dd_h2)
-        self.dh2          = tf.matmul(dh1,dw_h2) + db_h2
+        self.dh2     = self.activation(tf.matmul(dh1,dw_h2) + db_h2)
         self._reconstruction()
 
  
@@ -135,7 +137,7 @@ class GaussianVAE(BaseVAE):
     '''    
     
     def __init__(self,network_architecture = [784,400,200,10,200,400], batch_size=100,
-                 activation = None,learning_rate = 1e-3):
+                 activation = None,learning_rate = 1e-2):
                      
         super(GaussianVAE,self).__init__(network_architecture, batch_size, activation, learning_rate)
         init      = tf.initialize_all_variables() 
@@ -143,7 +145,7 @@ class GaussianVAE(BaseVAE):
         self.sess.run(init)
     
     def _reconstruction(self):
-        wmu, bmu            = create_layer(self.dd_h2,self.d_in)
+        wmu, bmu            = create_layer(self.dd_h2, self.d_in)
         wsd, bsd            = create_layer(self.dd_h2, self.d_in)
         self.x_log_std      = tf.matmul(self.dh2,wsd) + bsd
         self.reconstruction = tf.matmul(self.dh2,wmu) + bmu # mean of gaussian
@@ -196,12 +198,15 @@ if __name__=="__main__":
     print("Successfully initialised")
     test_batch = next_batch(100)      
         
-    for epoch in range(600):
+    for epoch in range(2000):
         x_batch = next_batch(100)
         gvae.partial_fit(x_batch)
         print("Iteration {0}".format(epoch))
         
     
     test_x_hat = gvae.reconstruct(test_batch)
+    x_hat = test_x_hat[0]
+    plt.plot(x_hat[:,0],x_hat[:,1],"r+")
+    plt.plot(test_batch[:,0], test_batch[:,1],'bo')
         
     
